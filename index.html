@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>COSMOS 3D — Simulador Interativo do Sistema Solar & AstroIA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- TELA DE CARREGAMENTO -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-cosmos-graphic">
+      <div class="orbit-ring ring-1"></div>
+      <div class="orbit-ring ring-2"></div>
+      <div class="orbit-ring ring-3"></div>
+      <div class="sun-core"></div>
+    </div>
+    <h1 class="loading-title">COSMOS <span>3D</span></h1>
+    <p class="loading-subtitle">Observatório Astrofísico Interativo • Motor Procedural PBR &amp; Shaders</p>
+    <div class="loading-progress-wrap">
+      <div id="loading-bar" class="loading-bar"></div>
+    </div>
+    <p id="loading-status" class="loading-status">Inicializando motor gráfico 3D e gerando texturas planetárias...</p>
+  </div>
+
+  <!-- VIEWPORT 3D & RÓTULOS PROJETADOS -->
+  <div id="canvas-container" class="canvas-container" aria-label="Simulação 3D do Sistema Solar"></div>
+  <div id="labels-container" class="labels-container"></div>
+
+  <!-- VINHETA ESPACIAL E HUD OVERLAY -->
+  <div class="hud-vignette"></div>
+
+  <!-- BARRA SUPERIOR DE TELEMETRIA -->
+  <header id="top-bar" class="top-bar glass-panel">
+    <div class="brand-group">
+      <button id="btn-toggle-left" class="icon-btn" title="Alternar Painel de Controle">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="15" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="brand-logo" id="btn-home-reset" title="Voltar à Visão Geral do Sistema Solar">
+        <span class="brand-dot"></span>
+        <div>
+          <span class="brand-title">COSMOS <em>3D</em></span>
+          <span class="brand-tag">OBSERVATÓRIO SOLAR</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="telemetry-center">
+      <div class="telemetry-pill" title="Data simulada na mecânica orbital">
+        <span class="telemetry-label">DATA ESTELAR</span>
+        <span id="sim-date" class="telemetry-value mono">22 NOV 2026 • 20:50 UTC</span>
+      </div>
+      <div class="telemetry-pill focused-pill" id="focused-pill">
+        <span class="telemetry-label">ALVO DA CÂMERA</span>
+        <span id="focused-badge" class="telemetry-value">Sistema Solar (Visão Livre)</span>
+      </div>
+      <div class="telemetry-pill hide-mobile" title="Distância em tempo real da câmera ao centro">
+        <span class="telemetry-label">VEL. SIMULAÇÃO</span>
+        <span id="top-speed-readout" class="telemetry-value mono">10 dias/s</span>
+      </div>
+    </div>
+
+    <nav class="top-actions" aria-label="Ferramentas do Observatório">
+      <button id="btn-tour" class="action-pill-btn" title="Iniciar Tour Cinematográfico Guiado">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        <span>Tour Guiado</span>
+      </button>
+      <button id="btn-compare" class="action-pill-btn" title="Comparar Planetas Lado a Lado">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="8" cy="12" r="5"></circle>
+          <circle cx="17" cy="12" r="3"></circle>
+        </svg>
+        <span>Comparar</span>
+      </button>
+      <button id="btn-distance" class="action-pill-btn" title="Calculadora de Distância e Tempo de Viagem Espacial">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 12h20M18 8l4 4-4 4M6 8l-4 4 4 4"></path>
+        </svg>
+        <span>Viagem</span>
+      </button>
+      <button id="btn-ai-toggle" class="action-pill-btn ai-accent-btn" title="Abrir Assistente de Inteligência Artificial Astronômica">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2l2.4 7.4L22 12l-7.6 2.6L12 22l-2.4-7.4L2 12l7.6-2.6L12 2z"></path>
+        </svg>
+        <span>AstroIA</span>
+      </button>
+      <button id="btn-audio" class="icon-btn" title="Ativar/Desativar Som Espacial Ambiente (Web Audio)" aria-pressed="false">
+        <svg id="icon-audio-off" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <line x1="23" y1="9" x2="17" y2="15"></line>
+          <line x1="17" y1="9" x2="23" y2="15"></line>
+        </svg>
+        <svg id="icon-audio-on" class="hidden" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+        </svg>
+      </button>
+      <button id="btn-help" class="icon-btn" title="Atalhos de Teclado e Guia de Navegação">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </button>
+    </nav>
+  </header>
+
+  <!-- PAINEL ESQUERDO DE CONTROLE ORBITAL E CAMADAS -->
+  <aside id="left-controls" class="left-controls glass-panel" aria-label="Controles de Simulação">
+    <div class="panel-section">
+      <div class="section-header">
+        <span class="section-title">CONTROLE TEMPORAL</span>
+        <span id="speed-label" class="badge-mono">10 dias/s</span>
+      </div>
+
+      <div class="transport-controls">
+        <button id="btn-reverse" class="transport-btn" title="Inverter Sentido do Tempo">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="19 20 9 12 19 4 19 20"></polygon>
+            <line x1="5" y1="19" x2="5" y2="5"></line>
+          </svg>
+        </button>
+        <button id="btn-play-pause" class="transport-btn primary-transport" title="Pausar / Continuar (Tecla Espaço)">
+          <svg id="icon-pause" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+            <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+          </svg>
+          <svg id="icon-play" class="hidden" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <polygon points="6 4 20 12 6 20 6 4"></polygon>
+          </svg>
+          <span id="play-pause-text">Pausar</span>
+        </button>
+        <button id="btn-reset-time" class="transport-btn" title="Voltar para Data Atual">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="slider-group">
+        <input type="range" id="time-speed-slider" min="0" max="100" value="45" aria-label="Velocidade da simulação" />
+      </div>
+
+      <div class="preset-grid">
+        <button class="speed-preset" data-days="0.00001157">Real</button>
+        <button class="speed-preset" data-days="0.04166">1h/s</button>
+        <button class="speed-preset" data-days="1">1d/s</button>
+        <button class="speed-preset active" data-days="10">10d/s</button>
+        <button class="speed-preset" data-days="45">45d/s</button>
+        <button class="speed-preset" data-days="365.25">1 ano/s</button>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <div class="panel-section">
+      <div class="section-header">
+        <span class="section-title">ESCALA &amp; CÂMERA</span>
+      </div>
+      <div class="segmented-control" role="group" aria-label="Modo de Escala">
+        <button class="scale-mode-btn active" data-scale="exploratory" title="Tamanhos e distâncias equilibrados para exploração ideal">
+          Exploratória
+        </button>
+        <button class="scale-mode-btn" data-scale="proportional" title="Proporção real entre os diâmetros dos planetas">
+          Proporcional
+        </button>
+      </div>
+
+      <div class="camera-grid">
+        <button id="cam-overview" class="cam-btn" title="Visão Panorâmica 3D">
+          <span>Panorama 3D</span>
+        </button>
+        <button id="cam-top" class="cam-btn" title="Vista Superior do Plano da Eclíptica">
+          <span>Topo (90°)</span>
+        </button>
+        <button id="cam-ecliptic" class="cam-btn" title="Vista Lateral do Plano Orbital">
+          <span>Plano Orbital</span>
+        </button>
+        <button id="cam-cinematic" class="cam-btn" title="Câmera Orbital Automática">
+          <span>Auto-Órbita</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <div class="panel-section">
+      <div class="section-header">
+        <span class="section-title">CAMADAS &amp; ELEMENTOS</span>
+      </div>
+
+      <div class="toggles-list">
+        <label class="toggle-row">
+          <span>Trajetórias Orbitais</span>
+          <input type="checkbox" id="toggle-orbits" checked />
+          <span class="toggle-switch"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Órbitas Keplerianas (Elípticas)</span>
+          <input type="checkbox" id="toggle-kepler" checked />
+          <span class="toggle-switch"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Rótulos Interativos 3D</span>
+          <input type="checkbox" id="toggle-labels" checked />
+          <span class="toggle-switch"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Luas &amp; Satélites</span>
+          <input type="checkbox" id="toggle-moons" checked />
+          <span class="toggle-switch"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Cinturão de Asteroides &amp; Kuiper</span>
+          <input type="checkbox" id="toggle-asteroids" checked />
+          <span class="toggle-switch"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Cometa Halley (Cauda Dinâmica)</span>
+          <input type="checkbox" id="toggle-comet" checked />
+          <span class="toggle-switch"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Zona Habitável (Goldilocks)</span>
+          <input type="checkbox" id="toggle-habitable" />
+          <span class="toggle-switch"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Eixos de Rotação &amp; Inclinação</span>
+          <input type="checkbox" id="toggle-axes" />
+          <span class="toggle-switch"></span>
+        </label>
+      </div>
+    </div>
+  </aside>
+
+  <!-- PAINEL DIREITO: INSPETOR DE TELEMETRIA DO ASTRO -->
+  <aside id="inspector-panel" class="inspector-panel glass-panel hidden" aria-label="Detalhes do Astro Selecionado">
+    <div class="inspector-header">
+      <div class="inspector-title-wrap">
+        <div class="inspector-badge-row">
+          <span id="insp-category" class="planet-type-badge">Planeta Rochoso</span>
+          <span id="insp-order" class="planet-order-badge">3º do Sol</span>
+        </div>
+        <h2 id="insp-name" class="inspector-title">Terra</h2>
+        <p id="insp-tagline" class="inspector-tagline">O Pálido Ponto Azul • Único mundo com oceanos líquidos na superfície</p>
+      </div>
+      <button id="btn-close-inspector" class="icon-btn" title="Desfocar e voltar à visão geral">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="inspector-quick-actions">
+      <button id="btn-focus-close" class="quick-act-btn active" title="Focar câmera próxima ao astro">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M3 12h3m12 0h3M12 3v3m0 12v3"></path>
+        </svg>
+        <span>Foco Próximo</span>
+      </button>
+      <button id="btn-toggle-cutaway" class="quick-act-btn" title="Visualizar Corte das Camadas Internas em 3D">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
+          <path d="M12 12 19.07 4.93"></path>
+        </svg>
+        <span>Corte Interno 3D</span>
+      </button>
+      <button id="btn-ask-ai-about" class="quick-act-btn ai-quick-btn" title="Consultar AstroIA sobre este astro">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2l2.4 7.4L22 12l-7.6 2.6L12 22l-2.4-7.4L2 12l7.6-2.6L12 2z"></path>
+        </svg>
+        <span>Explicar com IA</span>
+      </button>
+    </div>
+
+    <!-- ABAS DO INSPETOR -->
+    <div class="inspector-tabs" role="tablist">
+      <button class="insp-tab active" data-tab="tab-telemetry" role="tab">Telemetria</button>
+      <button class="insp-tab" data-tab="tab-structure" role="tab">Interior &amp; Clima</button>
+      <button class="insp-tab" data-tab="tab-human" role="tab">Laboratório</button>
+    </div>
+
+    <div class="inspector-body">
+      <!-- ABA 1: TELEMETRIA & LUAS -->
+      <div id="tab-telemetry" class="insp-tab-content active">
+        <p id="insp-description" class="insp-description"></p>
+
+        <div class="live-telemetry-box">
+          <div class="live-telemetry-header">
+            <span class="pulse-dot"></span>
+            <span>TELEMETRIA ORBITAL EM TEMPO REAL</span>
+          </div>
+          <div class="live-telemetry-grid">
+            <div>
+              <span class="lt-label">Distância ao Sol</span>
+              <span id="live-dist-sun" class="lt-val mono">1,000 UA</span>
+            </div>
+            <div>
+              <span class="lt-label">Distância à Terra</span>
+              <span id="live-dist-earth" class="lt-val mono">0,000 UA</span>
+            </div>
+            <div>
+              <span class="lt-label">Velocidade Orbital</span>
+              <span id="live-orb-speed" class="lt-val mono">29,78 km/s</span>
+            </div>
+            <div>
+              <span class="lt-label">Luz Solar (Tempo)</span>
+              <span id="live-light-time" class="lt-val mono">8m 19s</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <span class="metric-label">Diâmetro Equatorial</span>
+            <span id="stat-diameter" class="metric-value mono">12.756 km</span>
+            <span id="stat-diameter-rel" class="metric-sub">1,00x Terra</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Massa</span>
+            <span id="stat-mass" class="metric-value mono">5,97 × 10²⁴ kg</span>
+            <span id="stat-mass-rel" class="metric-sub">1,00x Terra</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Gravidade Superficial</span>
+            <span id="stat-gravity" class="metric-value mono">9,81 m/s²</span>
+            <span id="stat-gravity-rel" class="metric-sub">1,00 G</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Temperatura Média</span>
+            <span id="stat-temp" class="metric-value mono">15 °C</span>
+            <span id="stat-temp-range" class="metric-sub">-89 °C a 57 °C</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Período de Rotação (Dia)</span>
+            <span id="stat-day" class="metric-value mono">23h 56m</span>
+            <span id="stat-tilt" class="metric-sub">Inclinação: 23,44°</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Período Orbital (Ano)</span>
+            <span id="stat-year" class="metric-value mono">365,25 dias</span>
+            <span id="stat-ecc" class="metric-sub">Excentricidade: 0,017</span>
+          </div>
+        </div>
+
+        <!-- SISTEMA DE LUAS -->
+        <div id="moons-section" class="moons-section">
+          <div class="sub-header">
+            <span>SISTEMA DE SATÉLITES / LUAS</span>
+            <span id="stat-moons-count" class="badge-mono">1 lua principal</span>
+          </div>
+          <div id="moons-list" class="moons-list"></div>
+        </div>
+      </div>
+
+      <!-- ABA 2: ESTRUTURA INTERNA & ATMOSFERA -->
+      <div id="tab-structure" class="insp-tab-content">
+        <div class="structure-visualizer">
+          <div id="layers-diagram" class="layers-diagram"></div>
+          <div class="layers-legend-wrap">
+            <h4 class="mini-heading">Camadas Internas</h4>
+            <p class="mini-hint">Dica: Clique em "Corte Interno 3D" acima para abrir o interior do astro no espaço 3D.</p>
+            <div id="layers-list" class="layers-list"></div>
+          </div>
+        </div>
+
+        <div class="atmosphere-section">
+          <h4 class="mini-heading">Composição Atmosférica</h4>
+          <p id="atmo-pressure" class="atmo-pressure">Pressão superficial: 1,00 atm (101,3 kPa)</p>
+          <div id="atmosphere-bars" class="atmosphere-bars"></div>
+        </div>
+
+        <div class="missions-section">
+          <h4 class="mini-heading">Exploração Espacial &amp; Sondas</h4>
+          <div id="missions-list" class="missions-list"></div>
+        </div>
+      </div>
+
+      <!-- ABA 3: LABORATÓRIO HUMANO & CURIOSIDADES -->
+      <div id="tab-human" class="insp-tab-content">
+        <div class="human-lab-card">
+          <h4 class="mini-heading">Simulador Gravitacional &amp; Cronológico</h4>
+          <p class="mini-hint">Descubra como seu corpo e sua idade se comportariam na superfície ou órbita deste astro:</p>
+          <div class="lab-inputs">
+            <label>
+              <span>Seu peso na Terra (kg)</span>
+              <input type="number" id="input-earth-weight" value="70" min="1" max="500" />
+            </label>
+            <label>
+              <span>Sua idade na Terra (anos)</span>
+              <input type="number" id="input-earth-age" value="25" min="1" max="150" />
+            </label>
+          </div>
+          <div class="lab-results">
+            <div class="lab-res-item">
+              <span class="lab-res-label">Peso neste Astro</span>
+              <span id="res-planet-weight" class="lab-res-val mono">70,0 kg</span>
+            </div>
+            <div class="lab-res-item">
+              <span class="lab-res-label">Idade em Anos Locais</span>
+              <span id="res-planet-age" class="lab-res-val mono">25,0 anos</span>
+            </div>
+            <div class="lab-res-item">
+              <span class="lab-res-label">Pulo de 50 cm na Terra</span>
+              <span id="res-planet-jump" class="lab-res-val mono">50 cm</span>
+            </div>
+            <div class="lab-res-item">
+              <span class="lab-res-label">Velocidade de Escape</span>
+              <span id="res-escape-vel" class="lab-res-val mono">11,19 km/s</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="facts-section">
+          <h4 class="mini-heading">Descobertas &amp; Curiosidades Científicas</h4>
+          <ul id="facts-list" class="facts-list"></ul>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- PAINEL DO ASSISTENTE DE IA ASTRONÔMICO (ASTRO-IA) -->
+  <section id="ai-panel" class="ai-panel glass-panel hidden" aria-label="Assistente AstroIA">
+    <div class="ai-header">
+      <div class="ai-title-group">
+        <div class="ai-avatar">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2l2.4 7.4L22 12l-7.6 2.6L12 22l-2.4-7.4L2 12l7.6-2.6L12 2z"></path>
+          </svg>
+        </div>
+        <div>
+          <h3 class="ai-title">AstroIA <span>Copiloto Científico</span></h3>
+          <span id="ai-context-badge" class="ai-context-badge">Foco: Sistema Solar</span>
+        </div>
+      </div>
+      <div class="ai-header-actions">
+        <button id="btn-ai-key" class="icon-btn" title="Configurar chave Gemini API opcional">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+          </svg>
+        </button>
+        <button id="btn-close-ai" class="icon-btn" title="Fechar AstroIA">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- CONFIGURAÇÃO OPCIONAL DE API KEY -->
+    <div id="ai-key-box" class="ai-key-box hidden">
+      <p class="mini-hint">O AstroIA já possui um motor astrofísico local completo offline. Opcionalmente, insira uma chave da API Google Gemini para respostas generativas livres:</p>
+      <div class="ai-key-row">
+        <input type="password" id="gemini-api-key-input" placeholder="Cole sua Gemini API Key (opcional)..." />
+        <button id="btn-save-api-key" class="small-primary-btn">Salvar</button>
+      </div>
+    </div>
+
+    <div id="ai-messages" class="ai-messages"></div>
+
+    <div class="ai-Quick-chips" id="ai-chips">
+      <button class="ai-chip" data-prompt="Explique o astro selecionado em detalhes">Explicar astro atual</button>
+      <button class="ai-chip" data-prompt="Como é a estrutura interna e atmosfera deste astro?">Interior e atmosfera</button>
+      <button class="ai-chip" data-prompt="Seria possível a vida humana sobreviver aqui?">Habitabilidade</button>
+      <button class="ai-chip" data-prompt="Compare este astro com o planeta Terra">Comparar com a Terra</button>
+      <button class="ai-chip" data-prompt="Conte uma curiosidade impressionante sobre este astro">Curiosidade extrema</button>
+      <button class="ai-chip" data-prompt="Como funcionam as leis de Kepler neste sistema?">Mecânica orbital</button>
+    </div>
+
+    <form id="ai-form" class="ai-input-row">
+      <input
+        type="text"
+        id="ai-input"
+        placeholder="Pergunte sobre planetas, luas, gravidade, viagens ou peça para focar um astro..."
+        autocomplete="off"
+      />
+      <button type="submit" id="ai-send" class="ai-send-btn" title="Enviar pergunta">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </form>
+  </section>
+
+  <!-- BANNER DO TOUR GUIADO CINEMATOGRÁFICO -->
+  <div id="tour-banner" class="tour-banner glass-panel hidden">
+    <div class="tour-step-Header">
+      <span id="tour-step-counter" class="tour-badge">PARADA 1 DE 12</span>
+      <h3 id="tour-step-title" class="tour-title">O Sol — Coração do Sistema Solar</h3>
+    </div>
+    <p id="tour-step-text" class="tour-text"></p>
+    <div class="tour-controls">
+      <button id="btn-tour-prev" class="cam-btn">← Anterior</button>
+      <button id="btn-tour-next" class="cam-btn primary-cam-btn">Próximo Astro →</button>
+      <button id="btn-tour-exit" class="cam-btn danger-cam-btn">Encerrar Tour</button>
+    </div>
+  </div>
+
+  <!-- DOCK INFERIOR DE NAVEGAÇÃO PLANETÁRIA -->
+  <nav id="planet-dock" class="planet-dock glass-panel" aria-label="Seletor Rápido de Astros"></nav>
+
+  <!-- MODAL 1: COMPARADOR PLANETÁRIO -->
+  <div id="compare-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="compare-modal-title">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <div>
+          <span class="section-title">LABORATÓRIO COMPARATIVO</span>
+          <h2 id="compare-modal-title" class="modal-title">Comparador Astrofísico Lado a Lado</h2>
+        </div>
+        <button id="btn-close-compare" class="icon-btn" title="Fechar Comparador">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="compare-selectors">
+        <div class="compare-select-box">
+          <label for="compare-select-a">Astro A</label>
+          <select id="compare-select-a"></select>
+        </div>
+        <div class="compare-vs">VS</div>
+        <div class="compare-select-box">
+          <label for="compare-select-b">Astro B</label>
+          <select id="compare-select-b"></select>
+        </div>
+      </div>
+
+      <div class="compare-visual-stage">
+        <div class="compare-sphere-col">
+          <div class="sphere-wrap">
+            <div id="comp-sphere-a" class="comp-sphere"></div>
+          </div>
+          <h4 id="comp-name-a">Terra</h4>
+          <span id="comp-diam-a" class="mono">12.756 km</span>
+        </div>
+        <div class="compare-sphere-col">
+          <div class="sphere-wrap">
+            <div id="comp-sphere-b" class="comp-sphere"></div>
+          </div>
+          <h4 id="comp-name-b">Júpiter</h4>
+          <span id="comp-diam-b" class="mono">142.984 km</span>
+        </div>
+      </div>
+
+      <p id="compare-summary-text" class="compare-summary-text"></p>
+
+      <div id="compare-table" class="compare-table"></div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: CALCULADORA DE VIAGEM INTERPLANETÁRIA -->
+  <div id="distance-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="distance-modal-title">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <div>
+          <span class="section-title">NAVEGAÇÃO &amp; TELEMETRIA</span>
+          <h2 id="distance-modal-title" class="modal-title">Calculadora de Distância &amp; Tempo de Viagem</h2>
+        </div>
+        <button id="btn-close-distance" class="icon-btn" title="Fechar Calculadora">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="compare-selectors">
+        <div class="compare-select-box">
+          <label for="travel-select-origin">Ponto de Origem</label>
+          <select id="travel-select-origin"></select>
+        </div>
+        <div class="compare-vs">→</div>
+        <div class="compare-select-box">
+          <label for="travel-select-dest">Destino</label>
+          <select id="travel-select-dest"></select>
+        </div>
+      </div>
+
+      <div class="travel-distance-cards">
+        <div class="metric-card">
+          <span class="metric-label">Distância Atual na Simulação</span>
+          <span id="travel-live-au" class="metric-value mono">4,20 UA</span>
+          <span id="travel-live-km" class="metric-sub">628,3 milhões de km</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Aproximação Mínima Orbital</span>
+          <span id="travel-min-au" class="metric-value mono">3,95 UA</span>
+          <span id="travel-min-km" class="metric-sub">590,9 milhões de km</span>
+        </div>
+      </div>
+
+      <h4 class="mini-heading">Tempo Estimado de Travessia</h4>
+      <div id="travel-vehicles-list" class="travel-vehicles-list"></div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: GUIA DE NAVEGAÇÃO E ATALHOS -->
+  <div id="help-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
+    <div class="modal-card glass-panel small-modal">
+      <div class="modal-header">
+        <div>
+          <span class="section-title">MANUAL DO OBSERVATÓRIO</span>
+          <h2 id="help-modal-title" class="modal-title">Controles 3D &amp; Atalhos de Teclado</h2>
+        </div>
+        <button id="btn-close-help" class="icon-btn" title="Fechar Ajuda">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="help-grid">
+        <div class="help-block">
+          <h4>Mouse &amp; Touch 3D</h4>
+          <ul>
+            <li><strong>Botão Esquerdo + Arrastar:</strong> Orbitar câmera em 360°</li>
+            <li><strong>Roda do Mouse (Scroll):</strong> Zoom suave de aproximação/afastamento</li>
+            <li><strong>Botão Direito + Arrastar:</strong> Mover câmera livremente (Pan)</li>
+            <li><strong>Clique em um Planeta ou Rótulo:</strong> Viajar e travar câmera no astro</li>
+          </ul>
+        </div>
+        <div class="help-block">
+          <h4>Atalhos de Teclado</h4>
+          <ul class="shortcut-list">
+            <li><kbd>Espaço</kbd> <span>Pausar / Continuar simulação</span></li>
+            <li><kbd>0</kbd> a <kbd>9</kbd> <span>Focar Sol (0) ou Planetas (1-9)</span></li>
+            <li><kbd>R</kbd> <span>Resetar câmera para Visão Geral</span></li>
+            <li><kbd>O</kbd> <span>Alternar linhas de órbita</span></li>
+            <li><kbd>L</kbd> <span>Alternar rótulos flutuantes 3D</span></li>
+            <li><kbd>C</kbd> <span>Alternar Corte Interno 3D do astro focado</span></li>
+            <li><kbd>I</kbd> <span>Abrir / Fechar Assistente AstroIA</span></li>
+            <li><kbd>Esc</kbd> <span>Fechar modais ou desfocar planeta</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/cosmos.standalone.js"></script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+    if (window.location.protocol === 'file:') {
+      window.__startCosmosStandalone({
+        THREE,
+        OrbitControls,
+        EffectComposer,
+        RenderPass,
+        UnrealBloomPass
+      });
+    } else {
+      import('./js/main.js');
+    }
+  </script>
+</body>
+</html>
+
